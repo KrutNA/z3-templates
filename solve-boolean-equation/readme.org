@@ -1,0 +1,151 @@
+* Definition
+
+For example we have 6 variables: ~A, B, C, X, Y, Z~ and boolean equation
+
+~F = A'BX'YZ + ACX'YZ + AB'C'X'Z + AB'C'XY'Z' + A'B'CXY'Z' + AB'C'X'Y + A'B'CX'YZ'~
+
+Which have following rules:
+
+- ~F~ is ~True~ (could be also ~False~, but we'll need to use ~Not~ for that expression);
+- ~+~ is ~disjunction~, e.g. ~OR~ operation;
+- ~'~ is logical negation, e.g. unary ~NOT~ operation;
+- Two near varibles represents ~conjuction~.
+
+* Template description
+
+** Define variables
+
+First of all, we'll define all varibles for this equation:
+
+#+begin_src python
+  A, B, C, X, Y, Z = Bools('A B C X Y Z')
+  vars = [ A, B, C, X, Y, Z ]
+
+  s = Solver()
+#+end_src
+
+So we are able to define or expression in z3 notation now:
+
+#+begin_src python
+  expr = Or(And(Not(A), B, Not(X), Y, Z),
+	    And(A, C, Not(X), Y, Z),
+	    And(A, Not(B), Not(C), Not(X), Z),
+	    And(A, Not(B), Not(C), X, Not(Y), Not(Z)),
+	    And(Not(A), Not(B), C, X, Not(Y), Not(Z)),
+	    And(A, Not(B), Not(C), Not(X), Y),
+	    And(Not(A), Not(B), C, Not(X), Y, Not(Z)))
+  s.add(expr)
+#+end_src
+
+Our results will store in foloowing array:
+
+#+begin_src python
+models = []
+#+end_src
+
+** Utils
+
+Convert Z3 model into python variables.
+
+P.s. Z3's True/False are not python's True/False and all checks will transform into Z3 expressions.
+
+#+begin_src python
+  def convert_model(model):
+      return [
+	  is_true(model[I])
+	  if is_true(model[I]) or is_false(model[I])
+	  else None
+	  for I in vars
+      ]
+#+end_src
+
+Create full binary map for ~True~ models.
+
+#+begin_src python
+  def trasnform_to_binary(models):
+      binaries = [False for i in range(2**len(vars))]
+    
+      for model in models:
+	  cases = [ 0 ]
+	  for elt in model:
+	      if elt == True or elt == False:
+		  cases = [(c << 1) + int(elt) for c in cases]
+	      else:
+		  cases = [(c << 1) for c in cases] + [(c << 1) + 1 for c in cases]
+	  for case in cases:
+	      binaries[case] = True
+      return binaries
+#+end_src
+
+#+begin_src python
+  def print_karnaugh(binaries):
+      placeholer_true, placeholer_false = '#', ' '
+      width = 2**(len(vars) // 2)
+      height = 2**(len(vars) // 2 + (1 if len(vars) % 2 == 1 else 0))
+
+      for i in range(height):
+	  for j in range(width):
+	      print(placeholer_true
+		    if binaries[i * width + j]
+		    else placeholer_false,
+		    end='')
+	  print()
+#+end_src
+
+** Solution
+
+Now we'll find all solutions:
+
+#+begin_src python
+  while s.check() == sat:
+      model = s.model()
+
+      models.append(convert_model(model))
+
+      expr = simplify(Or([False if model[I] is None else I != model[I] for I in vars]))
+
+      s.add(expr)
+#+end_src
+
+** Inner descriptions
+
+Check where is any solutuion exists.
+
+#+begin_src python
+  s.check() == sat
+#+end_src
+
+Get solver model.
+
+#+begin_src python
+  wmodel = s.model()
+#+end_src
+
+Save solution into our ~models~ list, so we can use them later.
+
+#+begin_src python
+  models.append(convert_model(model))
+#+end_src
+
+Create checks so all our future solutions won't be equal to our current solution.
+E.g. at least one of new equation varirables won't be equal to current solutuion.
+
+#+begin_src python
+  expr =  simplify(Or([False if model[I] is None else I != model[I] for I in vars]))
+  s.add(expr)
+#+end_src
+
+** Output
+
+Print result models array.
+
+#+begin_src python
+  print(models)  
+#+end_src
+
+Convert models into binaries map and display it as karnaugh map.
+
+#+begin_src python
+  binaries = trasnform_to_binary(models)
+  print_karnaugh(binaries)
+#+end_src
