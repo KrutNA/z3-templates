@@ -1,0 +1,10 @@
+This repository consits of my researches and examples for Z3 solver,
+while solving reverse engineering and other CTF tasks.
+
+* Boolean Equation Solver
+
+[[file:solve-boolean-equation][Path to template directory]]
+
+Represents solver for [[https://en.wikipedia.org/wiki/Boolean_algebra][Boolean algebra]] equations.
+
+Pretty customizable and easily extensible.
